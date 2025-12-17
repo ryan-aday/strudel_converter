@@ -4,7 +4,6 @@ librosa
 soundfile
 numpy
 
-# Optional stem separation. Requires Python 3.8-3.10, old TensorFlow, and pinned protobuf.
-spleeter==2.4.0
-tensorflow==2.3.0
-protobuf>=3.20.0,<3.21.0
+# Optional: install spleeter + TensorFlow manually on Python 3.8-3.10 only.
+# See README for the recommended pins. Keeping them out of the default install
+# avoids pip resolution failures on newer Python versions.
