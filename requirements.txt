@@ -1,0 +1,6 @@
+streamlit
+yt_dlp
+librosa
+soundfile
+numpy
+spleeter
