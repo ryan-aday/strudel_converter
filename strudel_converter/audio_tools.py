@@ -7,6 +7,7 @@ import librosa
 import numpy as np
 import soundfile as sf
 import yt_dlp
+from spleeter.separator import Separator
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +91,28 @@ def extract_features(y: np.ndarray, sr: int) -> Dict[str, np.ndarray]:
         "pitches": pitches,
         "chroma": chroma,
     }
+
+
+def separate_stems(audio_path: Path, stems: str = "spleeter:4stems") -> Dict[str, Tuple[np.ndarray, int]]:
+    """Use Spleeter to separate stems and return loaded arrays keyed by instrument."""
+    temp_dir = Path(tempfile.mkdtemp(prefix="strudel_stems_"))
+    separator = Separator(stems)
+
+    separator.separate_to_file(
+        str(audio_path),
+        str(temp_dir),
+        filename_format="{filename}/{instrument}.wav",
+    )
+
+    base_folder = temp_dir / Path(audio_path).stem
+    stems_loaded: Dict[str, Tuple[np.ndarray, int]] = {}
+    for stem_file in base_folder.glob("*.wav"):
+        data, stem_sr = sf.read(stem_file)
+        if data.ndim > 1:
+            data = np.mean(data, axis=1)
+        stems_loaded[stem_file.stem] = (data.astype(np.float32), stem_sr)
+
+    return stems_loaded
 
 
 def dominant_key(chroma: np.ndarray) -> str:

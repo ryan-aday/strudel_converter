@@ -7,6 +7,8 @@ from strudel_converter.audio_tools import (
     extract_features,
     is_supported_file,
     load_audio,
+    note_sequence_from_pitch_track,
+    separate_stems,
     SUPPORTED_EXTENSIONS,
     save_upload_to_temp,
 )
@@ -24,6 +26,21 @@ def _analyze(audio_path: Path):
     with st.spinner("Analyzing audio..."):
         y, sr = load_audio(audio_path)
         features = extract_features(y, sr)
+        stem_payload = {}
+
+        try:
+            stems = separate_stems(audio_path)
+            for name, (stem_audio, stem_sr) in stems.items():
+                stem_features = extract_features(stem_audio, stem_sr)
+                stem_features["notes"] = note_sequence_from_pitch_track(
+                    stem_features["pitches"],
+                    sr=stem_sr,
+                    onset_times=stem_features["onset_times"],
+                )
+                stem_payload[name] = stem_features
+        except Exception as exc:  # pragma: no cover - optional path
+            logger.warning("Stem separation failed: %s", exc)
+
         result = build_strudel_result(
             tempo=float(features["tempo"][0]),
             chroma=features["chroma"],
@@ -31,6 +48,7 @@ def _analyze(audio_path: Path):
             sr=sr,
             onset_times=features["onset_times"],
             audio=y,
+            stems=stem_payload,
         )
     return result
 

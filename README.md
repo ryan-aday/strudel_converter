@@ -14,8 +14,10 @@ Convert audio from videos to Strudel code.
    ```
 3. Paste a YouTube/video/audio URL or upload a file to generate Strudel code with tempo, rhythmic grid, and melodic motifs.
 
-The app analyses tempo, onsets, chroma, and pitch using `librosa`, then emits a Strudel snippet you can paste into the [Strudel playground](https://strudel.cc/playground/). The generated script includes:
+The app analyses tempo, onsets, chroma, and pitch using `librosa`, and also separates stems with `spleeter` (vocals, drums, bass, other) to better map kicks/snares, bass movement, and melodic hooks. It emits a Strudel snippet you can paste into the [Strudel playground](https://strudel.cc/playground/). The generated script includes:
 
 - `setcpm` tempo metadata and a chord progression derived from the detected key (major or minor).
-- A drum grid (kicks plus hat stack), bass line locked to the progression, a lead motif from the detected pitches, and a noise riser.
+- A drum grid using `tr808_bd`, `tr808_sd`, and hats, a bass line locked to the progression (preferring bass stem notes), a lead motif (preferring vocal stem pitches), and a noise riser.
 - Section scaffolding using `arrange(...)` and reusable `let` bindings (drums, bass, pad, lead) combined via `stack(...)`.
+
+> **Note:** Spleeter downloads model data on first run; ensure `ffmpeg` is installed and that you have enough disk and memory headroom for stem separation.

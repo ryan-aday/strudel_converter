@@ -1,17 +1,12 @@
 from dataclasses import dataclass
 import re
 from pathlib import Path
-from typing import List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence
 
 import librosa
 import numpy as np
 
-from .audio_tools import (
-    dominant_key,
-    export_audio_clip,
-    grid_rhythm,
-    note_sequence_from_pitch_track,
-)
+from .audio_tools import dominant_key, export_audio_clip, note_sequence_from_pitch_track
 
 
 @dataclass
@@ -213,17 +208,42 @@ def _lead_motif(notes: Sequence[str], root: str) -> List[str]:
     if not notes:
         return [f"{root.lower()}4", f"{_format_note(root + '5')}".lower()]
     cleaned = [_format_note(n) for n in notes if n]
-    motif = cleaned[:8]
-    while len(motif) < 8 and cleaned:
+    motif = cleaned[:12]
+    while len(motif) < 12 and cleaned:
         motif.append(cleaned[len(motif) % len(cleaned)])
     return motif
 
 
-def _bass_line(root: str) -> List[str]:
+def _bass_line(root: str, bass_notes: Optional[Sequence[str]] = None) -> List[str]:
+    if bass_notes:
+        cleaned = [_format_note(n) for n in bass_notes if n]
+        if cleaned:
+            return cleaned[:8]
     fifth = _transpose(root, 7)
     octave_root = f"{root.lower()}2"
     octave_fifth = f"{fifth.lower()}2"
     return [octave_root, octave_root, octave_fifth, octave_root]
+
+
+def _drum_pattern(onset_times: np.ndarray, tempo: float) -> List[str]:
+    pattern = ["~"] * 16
+    seconds_per_beat = 60.0 / tempo if tempo > 0 else 0.5
+    for onset in onset_times:
+        beat_position = onset / seconds_per_beat if seconds_per_beat else 0
+        step = int(np.round((beat_position % 4) / 4 * 16)) % 16
+        pattern[step] = "tr808_bd"
+
+    # default backbeat and hats
+    for step in (4, 12):
+        if pattern[step] == "~":
+            pattern[step] = "tr808_sd"
+        else:
+            pattern[step] = pattern[step] + " tr808_sd"
+
+    for i in range(16):
+        if pattern[i] == "~":
+            pattern[i] = "hh"
+    return pattern
 
 
 def build_strudel_result(
@@ -233,21 +253,29 @@ def build_strudel_result(
     sr: int,
     onset_times: np.ndarray,
     audio: np.ndarray,
+    stems: Optional[Dict[str, Dict[str, np.ndarray]]] = None,
 ) -> StrudelResult:
+    stems = stems or {}
     root = dominant_key(chroma)
-    notes = note_sequence_from_pitch_track(pitches, sr=sr, onset_times=onset_times)
+    base_notes = note_sequence_from_pitch_track(pitches, sr=sr, onset_times=onset_times)
 
-    if notes:
-        counts = {}
-        for n in notes:
+    # prefer stem-derived materials when available
+    drum_onsets = stems.get("drums", {}).get("onset_times", onset_times)
+    bass_notes = stems.get("bass", {}).get("notes", [])
+    vocal_notes = stems.get("vocals", {}).get("notes", [])
+
+    ranked_notes = base_notes + vocal_notes
+    if ranked_notes:
+        counts: Dict[str, int] = {}
+        for n in ranked_notes:
             counts[n] = counts.get(n, 0) + 1
-        notes = sorted(notes, key=lambda x: counts.get(x, 0), reverse=True)
+        ranked_notes = sorted(ranked_notes, key=lambda x: counts.get(x, 0), reverse=True)
 
-    mode = _infer_mode(notes, root)
+    mode = _infer_mode(ranked_notes, root)
     progression = _progression(root, mode)
-    lead = _lead_motif(notes, root)
-    rhythm = grid_rhythm(onset_times, tempo=tempo)
-    bass = _bass_line(root)
+    lead = _lead_motif(vocal_notes or base_notes, root)
+    rhythm = _drum_pattern(drum_onsets, tempo=tempo)
+    bass = _bass_line(root, bass_notes=bass_notes)
     preview = export_audio_clip(audio, sr=sr) if audio.size else None
 
     return StrudelResult(
