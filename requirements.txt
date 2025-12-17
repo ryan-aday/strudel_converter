@@ -1,0 +1,9 @@
+streamlit
+yt_dlp
+librosa
+soundfile
+numpy
+
+# Optional: install spleeter + TensorFlow manually on Python 3.8-3.10 only.
+# See README for the recommended pins. Keeping them out of the default install
+# avoids pip resolution failures on newer Python versions.
