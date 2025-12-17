@@ -3,4 +3,8 @@ yt_dlp
 librosa
 soundfile
 numpy
-spleeter
+
+# Optional stem separation. Requires Python 3.8-3.10, old TensorFlow, and pinned protobuf.
+spleeter==2.4.0
+tensorflow==2.3.0
+protobuf>=3.20.0,<3.21.0

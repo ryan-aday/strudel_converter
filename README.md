@@ -8,6 +8,9 @@ Convert audio from videos to Strudel code.
    ```bash
    pip install -r requirements.txt
    ```
+
+   - Stem separation with Spleeter requires **Python 3.8–3.10**, TensorFlow 2.3, and a pinned protobuf (<3.21). On Python 3.11+ 
+     or if protobuf is newer, Spleeter will fail to import; the app will fall back to feature extraction without stems.
 2. Run the Streamlit app:
    ```bash
    streamlit run streamlit_app.py

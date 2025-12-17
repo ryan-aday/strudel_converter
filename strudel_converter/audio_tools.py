@@ -7,7 +7,13 @@ import librosa
 import numpy as np
 import soundfile as sf
 import yt_dlp
-from spleeter.separator import Separator
+
+try:  # optional dependency; unavailable on Py>=3.11
+    from spleeter.separator import Separator  # type: ignore
+    _SPLEETER_IMPORT_ERROR: str | None = None
+except Exception as exc:  # pragma: no cover - import guard
+    Separator = None  # type: ignore
+    _SPLEETER_IMPORT_ERROR = str(exc)
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +101,12 @@ def extract_features(y: np.ndarray, sr: int) -> Dict[str, np.ndarray]:
 
 def separate_stems(audio_path: Path, stems: str = "spleeter:4stems") -> Dict[str, Tuple[np.ndarray, int]]:
     """Use Spleeter to separate stems and return loaded arrays keyed by instrument."""
+    if Separator is None:
+        raise RuntimeError(
+            "Spleeter is unavailable. Install on Python 3.8-3.10 and pin protobuf<=3.20.x. "
+            f"Import error: {_SPLEETER_IMPORT_ERROR}"
+        )
+
     temp_dir = Path(tempfile.mkdtemp(prefix="strudel_stems_"))
     separator = Separator(stems)
 
